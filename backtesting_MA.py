@@ -128,10 +128,7 @@ class main():
 
             for ma1 in self.numforma1:
                 for ma2 in self.numforma2:
-                    # for ma3 in self.numforma3:
-                    #     for ma4 in self.numforma4:
                     for ma_set in self.ma_flow:
-                        # if ma2 > ma1 and ma4 > ma3:
                         ma3 = ma1
                         ma4 = ma2
                         flag_new = False
@@ -166,111 +163,9 @@ class main():
 
                             strat_year = datetime.datetime.fromtimestamp(int(data_copy['timestamp'][1])).year
 
-                            #
-                            # flag_sys = 1
-                            # time_buy = 0
-                            # time_sell = 0
-                            # price_buy = 0
-                            # price_sell = 0
-                            #
-                            # hpr = 1
-                            #
-                            # list_time = []
-                            # list_time_buy = []
-                            # list_time_sell = []
-                            # list_hpr = []
-                            # list_ror = []
-                            # list_buy = []
-                            # list_sell = []
-                            # list_ratio = []
-                            #
-                            # start = datetime.datetime.fromtimestamp(data_copy['timestamp'][0])
-                            #
-                            # save_time = datetime.datetime(year=start.year, month=start.month, day=start.day, hour=9)
-                            # if start > save_time:
-                            #     save_time = save_time + datetime.timedelta(days=1)
-                            #
-                            # for ind in range(1,len(data_copy),1):
-                            #     now = datetime.datetime.fromtimestamp(data_copy['timestamp'][ind])
-                            #     now_data = data_copy.iloc[ind]
-                            #     pre_data = data_copy.iloc[ind-1]
-                            #
-                            #
-                            #     if now >= save_time:
-                            #         save_time = save_time + datetime.timedelta(days=1)
-                            #         # list_time.append(now)
-                            #         # list_time_buy.append(time_buy)
-                            #         # list_time_sell.append(time_sell)
-                            #         # list_buy.append(price_buy)
-                            #         # list_sell.append(price_sell)
-                            #         # list_hpr.append(hpr)
-                            #         # list_ratio.append(now_data['ratio'])
-                            #         # if not price_sell == 0:
-                            #         #     time_buy = 0
-                            #         #     time_sell = 0
-                            #         #     price_buy = 0
-                            #         #     price_sell = 0
-                            #
-                            #     if flag_sys == 1:
-                            #         try:
-                            #             flag_set = False
-                            #             # for k in range(1,3,1):
-                            #             #     if list_ror[-1 * k] < 0:
-                            #             #         flag_set = False
-                            #             if flag_set:
-                            #                 if now_data[ma1] > now_data[ma2] and pre_data[ma1] < pre_data[ma2]:
-                            #                     price_buy = now_data['open']
-                            #                     # print(now,' : buy : ',price_buy)
-                            #                     time_buy = now
-                            #                     flag_sys = 2
-                            #             else:
-                            #                 if now_data[ma1] > now_data[ma2] and pre_data[ma1] < pre_data[ma2] and data_copy.iloc[ind]['ma_set'] > data_copy.iloc[ind-1]['ma_set']:
-                            #                     price_buy = now_data['open']
-                            #                     # print(now,' : buy : ',price_buy)
-                            #                     time_buy = now
-                            #                     flag_sys = 2
-                            #         except Exception as e:
-                            #             print(e)
-                            #             if now_data[ma1] > now_data[ma2] and pre_data[ma1] < pre_data[ma2]:
-                            #                 price_buy = now_data['open']
-                            #                 # print(now,' : buy : ',price_buy)
-                            #                 time_buy = now
-                            #                 flag_sys = 2
-                            #     elif flag_sys == 2:
-                            #         if now_data[ma3] < now_data[ma4] and pre_data[ma3] > pre_data[ma4]:
-                            #             price_sell = now_data['open']
-                            #             time_sell = now
-                            #             hpr = hpr * (price_sell / price_buy - self.slippage)
-                            #             ror = price_sell / price_buy - 1 - self.slippage
-                            #             list_time_buy.append(time_buy)
-                            #             list_time_sell.append(time_sell)
-                            #             list_buy.append(price_buy)
-                            #             list_sell.append(price_sell)
-                            #             list_hpr.append(hpr)
-                            #             list_ror.append(ror)
-                            #             # print(f'{now}  sell : {price_sell},  {ror*100:,.2f}  {hpr*100:,.2f}')
-                            #             flag_sys = 1
-                            #
-                            # temp_data = pd.DataFrame()
-                            # temp_data['time buy'] = list_time_buy
-                            # temp_data['time sell'] = list_time_sell
-                            # temp_data['price buy'] = list_buy
-                            # temp_data['price sell'] = list_sell
-                            # temp_data['hpr'] = list_hpr
-                            # temp_data['dd'] = (temp_data['hpr'].cummax() - temp_data['hpr']) / temp_data['hpr'].cummax() * 100
-                            #
-                            # print("ticker : ", ticker)
-                            # print(f'MA : {ma1}/{ma2}')
-                            # print(f'MA : {ma3}/{ma4}')
-                            # print("hrp : ", temp_data.iloc[-1]['hpr'])
-                            # print("MDD(%): ", temp_data['dd'].max(), "\n")
-
                             data_copy['increase'] = np.where(data_copy[ma1] > data_copy[ma2], np.where(
                                 data_copy[ma2].shift(1) > data_copy[ma1].shift(1),
                                 np.where(data_copy['ma_set'] > data_copy['ma_set'].shift(1), 1, 0), 0), 0)
-                            # data_copy['increase'] = np.where(data_copy[ma1] > data_copy[ma2], np.where(
-                            #     data_copy[ma2].shift(1) > data_copy[ma1].shift(1),1, 0), 0)
-                            # data_copy['increase_shift'] = data_copy['increase'].shift(1)
 
                             data_copy['price buy'] = np.where(data_copy['increase'] == 1, data_copy['open'], 0)
 
