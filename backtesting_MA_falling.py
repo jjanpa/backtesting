@@ -1,4 +1,4 @@
-#### 마지막 수정 22.10.27
+#### 마지막 수정 24.1.4
 
 import datetime
 import time
@@ -22,18 +22,18 @@ class main():
         self.gap = 0.0
         self.factor = 1
         # song
-        # self.numforma1 = [14]
-        # self.numforma2 = [70]
-        # self.ma_flow = [370]
+        self.numforma1 = [14]
+        self.numforma2 = [70]
+        self.ma_flow = [370]
 
         # park
         # self.numforma1 = [7]
         # self.numforma2 = [129]
         # self.ma_flow = [166]
 
-        self.numforma1 = [x for x in range(1,200,1)]
-        self.numforma2 = [x for x in range(1,200,1)]
-        self.ma_flow = [x for x in range(1,600,1)]
+        # self.numforma1 = [x for x in range(1,200,1)]
+        # self.numforma2 = [x for x in range(1,200,1)]
+        # self.ma_flow = [x for x in range(1,600,1)]
 
         self.trader = 'upbit'
         ticker_list = ['ETH']
@@ -46,6 +46,9 @@ class main():
         self.column_ohlcv = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
         self.column_data = ['timestamp','open', 'high', 'low', 'close', 'volume','time','ratio']
         self.column_result = ['trader', 'ticker', 'ma1', 'ma2', 'ma_set', 'hpr', 'MDD']
+        self.column_calculate = ['time buy', 'time sell', 'price buy', 'price sell','low','high']
+
+
 
         self.start_time = datetime.datetime(2016, 1, 1, 0)
         self.end_time = datetime.datetime(2024,1,4,3)
@@ -164,65 +167,122 @@ class main():
 
                                 strat_year = datetime.datetime.fromtimestamp(int(data_copy['timestamp'][1])).year
 
-                                data_copy['increase'] = np.where(data_copy[ma1] > data_copy[ma2], np.where(
-                                    data_copy[ma2].shift(1) > data_copy[ma1].shift(1),
-                                    np.where(data_copy['ma_set'] > data_copy['ma_set'].shift(1), 1, 0), 0), 0)
+                                temp_calculate = pd.DataFrame([(datetime, datetime, 0.0, 0.0,0.0,0.0)], columns=self.column_calculate)
+                                temp_calculate.drop([0], inplace=True)
 
-                                data_copy['price buy'] = np.where(data_copy['increase'] == 1, data_copy['open'], 0)
+                                flag_cal = 0
+                                index_cal= 0
 
-                                data_copy['price sell'] = np.where(data_copy[ma2] > data_copy[ma1], 1, 0)
-                                data_copy['price sell'] = np.where(data_copy['price sell'] == 1,
-                                                                   np.where(data_copy['price sell'].shift(1) == 0,
-                                                                            data_copy['open'], 0), 0)
-                                is_buy = data_copy['price buy'] != 0
-                                is_sell = data_copy['price sell'] != 0
+                                for i in range(1,len(data_copy),1):
+                                    pre_data = data_copy.iloc[i-1]
+                                    now_data = data_copy.iloc[i]
+                                    now_time = datetime.datetime.fromtimestamp(now_data['timestamp'])
+                                    # print(now_time, now_data['time'])
+                                    if now_data['ma_set'] > pre_data['ma_set']:
+                                        if now_data[ma1] > now_data[ma2] and pre_data[ma1] < pre_data[ma2]:
+                                            tmp_cal = pd.DataFrame([(datetime.datetime(2010, 1, 1),
+                                                                     datetime.datetime(2010, 1, 1), 0.0, 0.0,0.0,0.0)],index=[index_cal],
+                                                                   columns=self.column_calculate)
+                                            tmp_cal['low'] = now_data['open']
+                                            tmp_cal['high'] = now_data['open']
+                                            index_cal+=1
+                                            tmp_cal['time buy'] = now_data['time']
+                                            tmp_cal['price buy'] = now_data['open']
+                                            flag_cal = 1
 
-                                data_copy = data_copy[is_buy | is_sell]
+                                    if flag_cal == 1:
+                                        if now_data['open']/tmp_cal.iloc[0]['price buy'] < 0.98:
+                                            tmp_cal['time sell'] = now_data['time']
+                                            tmp_cal['price sell'] = now_data['open']
+                                            temp_calculate = pd.concat([temp_calculate, tmp_cal])
+                                            flag_cal = 0
+                                            print(1, now_data['open'], tmp_cal.iloc[0]['price sell'])
 
-                                data_copy['price sell'] = np.where(data_copy['price sell'] != 0,
-                                                                   np.where(data_copy['price buy'].shift(1) != 0,
-                                                                            data_copy['price sell'], 0), 0)
-                                data_copy['price buy'] = np.where(data_copy['price buy'].shift(1) != 0, 0,
-                                                                  data_copy['price buy'])
+                                        if now_data[ma1] < now_data[ma2] and flag_cal == 1:
+                                            tmp_cal['time sell'] = now_data['time']
+                                            tmp_cal['price sell'] = now_data['open']
+                                            temp_calculate = pd.concat([temp_calculate, tmp_cal])
+                                            flag_cal = 0
+                                            print(2)
 
-                                is_buy = data_copy['price buy'] != 0
-                                is_sell = data_copy['price sell'] != 0
+                                        if now_data['open'] > tmp_cal.iloc[0]['high']:
+                                            tmp_cal['high'] = now_data['open']
+                                        if now_data['open'] < tmp_cal.iloc[0]['low']:
+                                            tmp_cal['low'] = now_data['open']
 
-                                data_copy = data_copy[is_buy | is_sell]
-
-                                #### 마지막 buying이 팔리지 않았을때 마지막 가격을 selling 가격으로 책정
-                                if data_copy.iloc[-1]['price sell'] == 0:
-                                    print('not selling!!!')
-                                    temp_row = pd.DataFrame(columns=data_copy.columns)
-                                    temp_row = temp_row.append(pd.Series(dtype=float, name=data_copy.index[-1]+1))
-                                    for column in temp_row.columns:
-                                        temp_row.loc[data_copy.index[-1]+1][column] = 0.0
-                                    temp_row.iloc[-1]['price buy'] = 0.0
-                                    temp_row.iloc[-1]['price sell'] = data.iloc[-1]['open']
-                                    temp_row.iloc[-1]['time'] = data.iloc[-1]['time']
-                                    data_copy = data_copy.append(temp_row)
-                                    data_copy['price buy'] = data_copy['price buy'] + 0.0000000001
+                                temp_calculate['LOW_per'] = (temp_calculate['low'] / temp_calculate['price buy'] -1)*100
+                                temp_calculate['HIGH_per'] = (temp_calculate['high'] / temp_calculate['price buy']-1)*100
+                                temp_calculate['ror_per'] = (temp_calculate['price sell'] / temp_calculate['price buy']-1)*100
 
 
-                                data_copy['ror'] = np.where(data_copy['price sell'] != 0, data_copy['price sell'] / data_copy['price buy'].shift(1) - self.slippage, 1)
 
-                                data_copy['time buy'] = data_copy['time'].shift(1)
-
-                                data_copy['time sell'] = data_copy['time']
-
-                                data_copy['price buy'] = data_copy['price buy'].shift(1)
-
-                                data_copy = data_copy[['time buy', 'time sell', 'price buy', 'price sell', 'ror']]
-
-                                is_ror = data_copy['price sell'] != 0
-
-                                data_copy = data_copy[is_ror]
-
-                                data_copy['hpr'] = data_copy['ror'].cumprod()
-                                data_copy['dd'] = (data_copy['hpr'].cummax() - data_copy['hpr']) / data_copy[
+                                temp_calculate['ror'] = temp_calculate['price sell'] / temp_calculate['price buy'] - self.slippage
+                                temp_calculate['hpr'] = temp_calculate['ror'].cumprod()
+                                temp_calculate['dd'] = (temp_calculate['hpr'].cummax() - temp_calculate['hpr']) / temp_calculate[
                                     'hpr'].cummax() * 100
 
-                                temp_data = data_copy
+
+                                #
+                                # data_copy['increase'] = np.where(data_copy[ma1] > data_copy[ma2], np.where(
+                                #     data_copy[ma2].shift(1) > data_copy[ma1].shift(1),
+                                #     np.where(data_copy['ma_set'] > data_copy['ma_set'].shift(1), 1, 0), 0), 0)
+                                #
+                                # data_copy['price buy'] = np.where(data_copy['increase'] == 1, data_copy['open'], 0)
+                                #
+                                # data_copy['price sell'] = np.where(data_copy[ma2] > data_copy[ma1], 1, 0)
+                                # data_copy['price sell'] = np.where(data_copy['price sell'] == 1,
+                                #                                    np.where(data_copy['price sell'].shift(1) == 0,
+                                #                                             data_copy['open'], 0), 0)
+                                # is_buy = data_copy['price buy'] != 0
+                                # is_sell = data_copy['price sell'] != 0
+                                #
+                                # data_copy = data_copy[is_buy | is_sell]
+                                #
+                                # data_copy['price sell'] = np.where(data_copy['price sell'] != 0,
+                                #                                    np.where(data_copy['price buy'].shift(1) != 0,
+                                #                                             data_copy['price sell'], 0), 0)
+                                # data_copy['price buy'] = np.where(data_copy['price buy'].shift(1) != 0, 0,
+                                #                                   data_copy['price buy'])
+                                #
+                                # is_buy = data_copy['price buy'] != 0
+                                # is_sell = data_copy['price sell'] != 0
+                                #
+                                # data_copy = data_copy[is_buy | is_sell]
+                                #
+                                # #### 마지막 buying이 팔리지 않았을때 마지막 가격을 selling 가격으로 책정
+                                # if data_copy.iloc[-1]['price sell'] == 0:
+                                #     print('not selling!!!')
+                                #     temp_row = pd.DataFrame(columns=data_copy.columns)
+                                #     temp_row = temp_row.append(pd.Series(dtype=float, name=data_copy.index[-1]+1))
+                                #     for column in temp_row.columns:
+                                #         temp_row.loc[data_copy.index[-1]+1][column] = 0.0
+                                #     temp_row.iloc[-1]['price buy'] = 0.0
+                                #     temp_row.iloc[-1]['price sell'] = data.iloc[-1]['open']
+                                #     temp_row.iloc[-1]['time'] = data.iloc[-1]['time']
+                                #     data_copy = data_copy.append(temp_row)
+                                #     data_copy['price buy'] = data_copy['price buy'] + 0.0000000001
+                                #
+                                # data_copy['ror'] = np.where(data_copy['price sell'] != 0, data_copy['price sell'] / data_copy['price buy'].shift(1) - self.slippage, 1)
+                                #
+                                # data_copy['time buy'] = data_copy['time'].shift(1)
+                                #
+                                # data_copy['time sell'] = data_copy['time']
+                                #
+                                # data_copy['price buy'] = data_copy['price buy'].shift(1)
+                                #
+                                # data_copy = data_copy[['time buy', 'time sell', 'price buy', 'price sell', 'ror']]
+                                #
+                                # is_ror = data_copy['price sell'] != 0
+                                #
+                                # data_copy = data_copy[is_ror]
+                                #
+                                # print(data_copy)
+                                #
+                                # data_copy['hpr'] = data_copy['ror'].cumprod()
+                                # data_copy['dd'] = (data_copy['hpr'].cummax() - data_copy['hpr']) / data_copy[
+                                #     'hpr'].cummax() * 100
+
+                                temp_data = temp_calculate
 
                                 print("ticker : ", ticker)
                                 print(f'MA : {ma1}/{ma2}')
